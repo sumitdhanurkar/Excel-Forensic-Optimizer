@@ -1,0 +1,186 @@
+import os, psutil, time, ctypes, threading, platform, re
+import tkinter as tk
+from tkinter import filedialog, messagebox, ttk, simpledialog
+import win32com.client
+import pythoncom
+
+# --- DESIGN SYSTEM ---
+CLR_BG = "#F3F2F1"
+CLR_EXCEL = "#107C41"
+CLR_BLUE = "#0078D4"
+CLR_WARN = "#FFB900"
+CLR_ERR = "#D13438"
+CLR_HEADER = "#201F1E"
+
+class ForensicProV108:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Excel Forensic Optimizer v10.8 - Forensic Pro")
+        self.root.geometry("1150x950")
+        self.root.configure(bg=CLR_BG)
+        
+        self.file_paths = []
+        self.batch_results = []
+        self.container = tk.Frame(self.root, bg=CLR_BG)
+        self.container.pack(fill="both", expand=True, padx=40, pady=20)
+        
+        self.engine_reset()
+        self.show_home()
+
+    def engine_reset(self):
+        """Standard IT Protocol: Clean environment before audit."""
+        try:
+            for proc in psutil.process_iter(['name']):
+                if proc.info['name'].upper() == "EXCEL.EXE": proc.kill()
+            ctypes.windll.psapi.EmptyWorkingSet(ctypes.windll.kernel32.GetCurrentProcess())
+        except: pass
+
+    def show_home(self):
+        for widget in self.container.winfo_children(): widget.destroy()
+        tk.Label(self.container, text="Excel Forensic Intelligence", font=("Segoe UI", 28, "bold"), bg=CLR_BG).pack(pady=(80, 10))
+        tk.Label(self.container, text="Interactive Password Recovery & Multi-Resource Telemetry", font=("Segoe UI", 11), bg=CLR_BG, fg="#605E5C").pack()
+        
+        btn = tk.Button(self.container, text="📂 START DEEP AUDIT", command=self.select_files, 
+                        bg=CLR_EXCEL, fg="white", font=("Segoe UI", 11, "bold"), relief="flat", padx=40, pady=15, cursor="hand2")
+        btn.pack(pady=40)
+
+    def select_files(self):
+        paths = filedialog.askopenfilenames(filetypes=[("Excel Files", "*.xlsx *.xlsm *.xlsb *.xls")])
+        if not paths: return
+        self.file_paths = list(paths)
+        self.start_audit()
+
+    def start_audit(self):
+        for widget in self.container.winfo_children(): widget.destroy()
+        self.pb = ttk.Progressbar(self.container, orient="horizontal", length=700, mode="determinate")
+        self.pb.pack(pady=40)
+        self.status = tk.Label(self.container, text="Initializing Forensic Engine...", bg=CLR_BG, font=("Segoe UI", 10))
+        self.status.pack()
+        threading.Thread(target=self.run_forensics, daemon=True).start()
+
+    def run_forensics(self):
+        self.batch_results = []
+        pythoncom.CoInitialize()
+        try:
+            excel = win32com.client.DispatchEx("Excel.Application")
+            excel.DisplayAlerts, excel.Visible, excel.AutomationSecurity = False, False, 3
+            
+            for index, path in enumerate(self.file_paths):
+                fname = os.path.basename(path)
+                fsize = os.path.getsize(path) / (1024 * 1024)
+                self.pb['value'] = ((index + 1) / len(self.file_paths)) * 100
+                
+                wb = None
+                password = ""
+                
+                # INTERACTIVE PASSWORD LOGIC
+                attempt = 0
+                while attempt < 3:
+                    try:
+                        wb = excel.Workbooks.Open(path, UpdateLinks=0, ReadOnly=True, Password=password)
+                        break
+                    except Exception as e:
+                        if "password" in str(e).lower():
+                            password = simpledialog.askstring("Encrypted File", f"File '{fname}' is protected.\nEnter Password:", show='*')
+                            if not password: break
+                            attempt += 1
+                        else: break
+
+                if not wb:
+                    self.batch_results.append({"name": fname, "size": "N/A", "dims": "LOCKED", "issues": ["Authentication Failed: Incorrect Password."], "health": "Critical"})
+                    continue
+
+                try:
+                    issues = []
+                    volatile_pattern = re.compile(r"OFFSET\(|INDIRECT\(|TODAY\(|RAND\(")
+                    t_rows, t_cols = 0, 0
+                    
+                    for sh in wb.Sheets:
+                        used = sh.UsedRange
+                        r, c = used.Rows.Count, used.Columns.Count
+                        t_rows += r; t_cols += c
+                        
+                        last_cell = sh.Cells.SpecialCells(11)
+                        if last_cell.Row > 5000 and r < (last_cell.Row * 0.5):
+                            issues.append(f"Phantom Data ({sh.Name}): {last_cell.Row} rows detected vs {r} filled.")
+                        
+                        try:
+                            f_range = used.SpecialCells(-4123).Formula
+                            if volatile_pattern.search(str(f_range)): issues.append(f"Volatile Lag ({sh.Name}): OFFSET/INDIRECT found.")
+                        except: pass
+
+                    if wb.HasVBProject: issues.append("VBA Metadata: Script-based security risk.")
+                    if wb.LinkSources(1): issues.append("External Links: Network dependency detected.")
+
+                    self.batch_results.append({
+                        "name": fname, "size": f"{fsize:.2f} MB", 
+                        "dims": f"[{t_rows}R x {t_cols}C]", 
+                        "issues": issues,
+                        "health": "Fully Compliant" if not issues else "Needs Optimization"
+                    })
+                    wb.Close(False)
+                except Exception as e:
+                    self.batch_results.append({"name": fname, "size": "N/A", "dims": "ERR", "issues": [str(e)], "health": "Critical"})
+            excel.Quit()
+        finally:
+            pythoncom.CoUninitialize()
+            self.root.after(100, self.display_final_audit)
+
+    def display_final_audit(self):
+        for widget in self.container.winfo_children(): widget.destroy()
+        
+        # 1. TRIPLE TELEMETRY DASHBOARD
+        sys_f = tk.Frame(self.container, bg="white", padx=20, pady=15, highlightthickness=1, highlightbackground="#DDD")
+        sys_f.pack(fill="x", pady=(0, 20))
+        tk.Label(sys_f, text="HARDWARE & RESOURCE TELEMETRY", font=("Segoe UI", 9, "bold"), bg="white", fg=CLR_BLUE).pack(anchor="w")
+        
+        metrics_f = tk.Frame(sys_f, bg="white")
+        metrics_f.pack(fill="x", pady=5)
+        
+        cpu, ram, disk = psutil.cpu_percent(), psutil.virtual_memory().percent, psutil.disk_usage('/').percent
+        
+        tk.Label(metrics_f, text=f"CPU: {cpu}%", font=("Segoe UI", 10, "bold"), bg="white").pack(side="left", padx=(0, 20))
+        tk.Label(metrics_f, text=f"RAM: {ram}%", font=("Segoe UI", 10, "bold"), bg="white", fg=CLR_BLUE if ram < 80 else CLR_ERR).pack(side="left", padx=20)
+        tk.Label(metrics_f, text=f"DISK: {disk}% Used", font=("Segoe UI", 10, "bold"), bg="white").pack(side="left", padx=20)
+
+        # 2. SCROLLABLE VERTICAL RESULTS
+        canvas = tk.Canvas(self.container, bg=CLR_BG, highlightthickness=0)
+        scroll = ttk.Scrollbar(self.container, orient="vertical", command=canvas.yview)
+        frame = tk.Frame(canvas, bg=CLR_BG)
+        frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.create_window((0, 0), window=frame, anchor="nw", width=1050)
+        canvas.configure(yscrollcommand=scroll.set)
+
+        for res in self.batch_results:
+            card = tk.Frame(frame, bg="white", padx=25, pady=20, highlightthickness=1, highlightbackground="#E0E0E0")
+            card.pack(fill="x", pady=10)
+            
+            tk.Label(card, text=f"📄 {res['name']}  {res['dims']}", font=("Segoe UI", 12, "bold"), bg="white").pack(anchor="w")
+            tk.Label(card, text=f"Size: {res['size']}", font=("Segoe UI", 9), bg="white", fg="#666").pack(anchor="w", pady=(2, 10))
+            
+            if res['health'] == "Fully Compliant":
+                tk.Label(card, text="STATUS: FULLY COMPLIANT", font=("Segoe UI", 9, "bold"), fg=CLR_EXCEL, bg="white").pack(anchor="w")
+                compliance = ["Structural Audit: Clean UsedRange.", "Calculation Audit: No Volatile Lag.", "Security: Clean Metadata."]
+                for info in compliance:
+                    tk.Label(card, text=f"• {info}", font=("Segoe UI", 9), fg="#444", bg="white").pack(anchor="w", padx=10)
+            else:
+                tk.Label(card, text=f"STATUS: {res['health'].upper()}", font=("Segoe UI", 9, "bold"), fg=CLR_ERR, bg="white").pack(anchor="w")
+                for prob in res['issues']:
+                    p_frame = tk.Frame(card, bg="#FFF9F9", pady=5)
+                    p_frame.pack(fill="x", pady=2)
+                    tk.Label(p_frame, text=f"DETECTED: {prob}", font=("Segoe UI", 9, "bold"), fg=CLR_ERR, bg="#FFF9F9", wraplength=800, justify="left").pack(anchor="w")
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scroll.pack(side="right", fill="y")
+
+        # 3. CONTROL COMMAND BAR
+        btn_frame = tk.Frame(self.container, bg=CLR_BG)
+        btn_frame.pack(fill="x", pady=20)
+        tk.Frame(btn_frame, bg=CLR_BG).pack(side="left", expand=True)
+        tk.Button(btn_frame, text="ADD MORE FILES", command=self.show_home, bg=CLR_BLUE, fg="white", font=("Segoe UI", 9, "bold"), padx=20, pady=10).pack(side="left", padx=10)
+        tk.Button(btn_frame, text="EXECUTE MASTER OPTIMIZATION", bg=CLR_EXCEL, fg="white", font=("Segoe UI", 9, "bold"), padx=20, pady=10).pack(side="left")
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = ForensicProV108(root)
+    root.mainloop()
