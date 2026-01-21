@@ -64,9 +64,3 @@ python -m PyInstaller --noconsole --onefile --uac-admin --icon=app_icon.ico --na
 **Note:** Ensure `win32com`, `psutil`, and `pythoncom` libraries are installed in the build environment.
 
 ---
-
-### What would you like me to do next?
-
-* Would you like me to **generate a clean, final version of the code** for you to copy and save?
-* Would you like me to **create a "Troubleshooting Guide"** for common Excel error codes (like 0x80010105)?
-* Or are you **ready to conclude** our session now that the software is complete?
